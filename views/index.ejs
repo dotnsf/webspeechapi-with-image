@@ -1,0 +1,102 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3c.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml">
+<head>
+<meta charset="utf8"/>
+<meta http-equiv="pragma" content="no-cache"/>
+<script src="//code.jquery.com/jquery-2.2.4.min.js"></script>
+<link href="//maxcdn.bootstrapcdn.com/bootstrap/4.5.1/css/bootstrap.min.css" rel="stylesheet"/>
+<script src="//maxcdn.bootstrapcdn.com/bootstrap/4.5.1/js/bootstrap.min.js"></script>
+
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black"/>
+<meta name="apple-mobile-web-app-title" content="Web Speech API"/>
+
+<title>Web Speech API with Image</title>
+<script>
+var flag_speech = 0;
+
+function vr_function() {
+    window.SpeechRecognition = window.SpeechRecognition || webkitSpeechRecognition;
+    var recognition = new SpeechRecognition(); //webkitSpeechRecognition();
+    recognition.lang = 'ja';
+    recognition.interimResults = true;
+    recognition.continuous = true;
+
+    recognition.onsoundstart = function() {
+        document.getElementById('status').innerHTML = "認識中";
+    };
+    recognition.onnomatch = function() {
+        document.getElementById('status').innerHTML = "もう一度試してください";
+    };
+    recognition.onerror = function() {
+        document.getElementById('status').innerHTML = "エラー";
+        if(flag_speech == 0)
+          vr_function();
+    };
+    recognition.onsoundend = function() {
+        document.getElementById('status').innerHTML = "停止中";
+          vr_function();
+    };
+
+    recognition.onresult = function(event) {
+        var results = event.results;
+        for (var i = event.resultIndex; i < results.length; i++) {
+            if(results[i].isFinal){
+                var text = results[i][0].transcript;
+                document.getElementById('result_text').innerHTML = text;
+                openAiImage( text );
+                vr_function();
+            }else{
+                document.getElementById('result_text').innerHTML = "[途中経過] " + results[i][0].transcript;
+                flag_speech = 1;
+            }
+        }
+    }
+    flag_speech = 0;
+    document.getElementById('status').innerHTML = "start";
+    recognition.start();
+}
+
+function openAiImage( prompt ){
+    $.ajax({
+        type: 'POST',
+        url: '/api/image',
+        json: { prompt: prompt },
+        success: function( result ){
+            console.log( { result } );
+            if( result && result.status ){
+                var images = result.result;
+                if( images && images.length ){
+                    $('#image').prop( 'src', images[0].url );
+                }
+            }
+        },
+        error: function( e0, e1, e2 ){
+            console.log( e0, e1, e2 );
+        }
+    })
+
+}
+</script>
+</head>
+<body>
+
+<nav class="navbar navbar-expand-lg navbar-light bg-light">
+  <a class="navbar-brand" href="#">Web Speech API</a>
+</nav>
+
+<div class="container" id="main_div" style="position: relative; top: 20px;">
+  <textarea id="result_text" class="form-control" cols="100" rows="10">
+  </textarea>
+  <br/>
+  <textarea id="status" class="form-control" cols="100" rows="1">
+  </textarea>
+  <br/>
+  <input type="button" class="btn btn-primary" onClick="vr_function();" value="音認開始">
+  <hr/>
+  <img id="image"/>
+</div>
+
+</body>
+</html>
