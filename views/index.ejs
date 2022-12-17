@@ -16,74 +16,74 @@
 <script>
 var flag_speech = 0;
 
-function vr_function() {
-    window.SpeechRecognition = window.SpeechRecognition || webkitSpeechRecognition;
-    var recognition = new SpeechRecognition(); //webkitSpeechRecognition();
-    recognition.lang = 'ja';
-    recognition.interimResults = true;
-    recognition.continuous = true;
+function vr_function(){
+  window.SpeechRecognition = window.SpeechRecognition || webkitSpeechRecognition;
+  var recognition = new SpeechRecognition(); //webkitSpeechRecognition();
+  recognition.lang = 'ja';
+  recognition.interimResults = true;
+  recognition.continuous = true;
 
-    recognition.onsoundstart = function() {
-        document.getElementById('status').innerHTML = "認識中";
-    };
-    recognition.onnomatch = function() {
-        document.getElementById('status').innerHTML = "もう一度試してください";
-    };
-    recognition.onerror = function() {
-        document.getElementById('status').innerHTML = "エラー";
-        if(flag_speech == 0)
-          vr_function();
-    };
-    recognition.onsoundend = function() {
-        document.getElementById('status').innerHTML = "停止中";
-          vr_function();
-    };
-
-    recognition.onresult = function(event) {
-        var results = event.results;
-        for (var i = event.resultIndex; i < results.length; i++) {
-            if(results[i].isFinal){
-                var text = results[i][0].transcript;
-                document.getElementById('result_text').innerHTML = text;
-                openAiImage( text );
-                vr_function();
-            }else{
-                document.getElementById('result_text').innerHTML = "[途中経過] " + results[i][0].transcript;
-                flag_speech = 1;
-            }
-        }
+  recognition.onsoundstart = function(){
+    $('#status').val( '認識中' );
+  };
+  recognition.onnomatch = function(){
+    $('#status').val( 'もう一度試してください' );
+  };
+  recognition.onerror = function(){
+    $('#status').val( 'エラー' );
+    if( flag_speech == 0 ){
+      vr_function();
     }
-    flag_speech = 0;
-    document.getElementById('status').innerHTML = "start";
-    recognition.start();
+  };
+  recognition.onsoundend = function(){
+    $('#status').val( '停止中' );
+    vr_function();
+  };
+
+  recognition.onresult = function( event ){
+    var results = event.results;
+    for( var i = event.resultIndex; i < results.length; i++ ){
+      if( results[i].isFinal ){
+        var text = results[i][0].transcript;
+        $('#result_text').val( text );
+        $('#result_texts').append( '<div>' + text + '</div>' );
+        openAiImage( text );
+        vr_function();
+      }else{
+        $('#result_text').val( "[途中経過] " + results[i][0].transcript );
+        flag_speech = 1;
+      }
+    }
+  }
+  flag_speech = 0;
+  $('#status').val( "start" );
+  recognition.start();
 }
 
 function openAiImage( prompt ){
-    $.ajax({
-        type: 'POST',
-        url: '/api/image',
-        json: { prompt: prompt },
-        success: function( result ){
-            console.log( { result } );
-            if( result && result.status ){
-                var images = result.result;
-                if( images && images.length ){
-                    $('#image').prop( 'src', images[0].url );
-                }
-            }
-        },
-        error: function( e0, e1, e2 ){
-            console.log( e0, e1, e2 );
+  $.ajax({
+    type: 'POST',
+    url: '/api/image',
+    data: { prompt: prompt },
+    success: function( result ){
+      if( result && result.status ){
+        var images = result.result;
+        if( images && images.length ){
+          $('#result_images').append( '<img src="' + images[0].url + '"/>' );
         }
-    })
-
+      }
+    },
+    error: function( e0, e1, e2 ){
+      console.log( e0, e1, e2 );
+    }
+  })
 }
 </script>
 </head>
 <body>
 
 <nav class="navbar navbar-expand-lg navbar-light bg-light">
-  <a class="navbar-brand" href="#">Web Speech API</a>
+  <a class="navbar-brand" href="#">Web Speech API with Image</a>
 </nav>
 
 <div class="container" id="main_div" style="position: relative; top: 20px;">
@@ -95,7 +95,12 @@ function openAiImage( prompt ){
   <br/>
   <input type="button" class="btn btn-primary" onClick="vr_function();" value="音認開始">
   <hr/>
-  <img id="image"/>
+
+  <div id="result_texts">
+  </div>
+  <br/>
+  <div id="result_images">
+  </div>
 </div>
 
 </body>
